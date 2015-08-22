@@ -128,7 +128,8 @@ public class Articles extends HttpServlet {
             }
             
             if (query != null){
-                sql = "SELECT * FROM JArticle WHERE UPPER(title) LIKE UPPER('%" + query + "%') ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                sql = "SELECT * FROM JArticle WHERE title IN ( SELECT title FROM JArticle WHERE UPPER(title) LIKE UPPER('%" + query + "%') ORDER BY createdAt DESC ) OFFSET " + (pageIndex * pageSize) + " ROWS FETCH NEXT " + pageSize
+                        + " ROWS ONLY";
             }
 
             ResultSet rs = stmt.executeQuery(sql);
