@@ -119,6 +119,7 @@ public class Articles extends HttpServlet {
                 int articleID = rs.getInt("articleID");
                 int authorID = rs.getInt("userID");
 
+                boolean isPrivate = rs.getBoolean("isPrivate");
                 String title = rs.getString("title");
                 
                 Timestamp createdAt = rs.getTimestamp("createdAt");
@@ -157,7 +158,9 @@ public class Articles extends HttpServlet {
                 article.put("articleID", articleID);
                 article.put("authorID", authorID);
                 
+                article.put("isPrivate", isPrivate);
                 article.put("title", title);
+                
                 article.put("createdAt", createdAt);
                 article.put("updatedAt", updatedAt);
                 
