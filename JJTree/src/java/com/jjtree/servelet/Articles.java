@@ -6,6 +6,7 @@
 package com.jjtree.servelet;
 
 import com.jjtree.utilities.JConstant;
+import com.jjtree.utilities.JServeletManager;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -18,7 +19,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.json.simple.JSONObject;
+import org.json.JSONObject;
 
 /**
  *
@@ -90,6 +91,8 @@ public class Articles extends HttpServlet {
                 int uselessValue = rs.getInt("uselessValue");
                 int viewCount = rs.getInt("viewCount");
 
+                String accountUrl = "/accounts/" + userID;
+                JSONObject author = JServeletManager.fetchFrom(request, accountUrl);
                 JSONObject article = new JSONObject();
 
                 article.put("articleID", articleID);
@@ -104,6 +107,8 @@ public class Articles extends HttpServlet {
                 article.put("viewCount", viewCount);
                 
                 PrintWriter writer = response.getWriter();
+                
+                article.put("author", author);
                 writer.print(article);
             }
 
