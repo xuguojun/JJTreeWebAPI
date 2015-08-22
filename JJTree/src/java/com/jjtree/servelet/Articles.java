@@ -14,11 +14,13 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -60,9 +62,24 @@ public class Articles extends HttpServlet {
             throws ServletException, IOException {
         processRequest(request, response);
         
+        // one single article
         String pathInfo = request.getPathInfo();
-        String[] path = pathInfo.split("/");
-        int valueID = Integer.parseInt(path[1]);
+        
+        int singleArticleID = -1;
+        if (pathInfo != null){
+            String[] path = pathInfo.split("/");
+            singleArticleID = Integer.parseInt(path[1]);
+        }
+        
+        // mutiple articles
+        String category = request.getParameter("category");
+        int pageSize = 0;
+        int pageIndex = 0;
+        
+        if (category != null){
+            pageSize = Integer.parseInt(request.getParameter("pageSize"));
+            pageIndex = Integer.parseInt(request.getParameter("pageIndex"));    
+        }
 
         try {
             // Register JDBC driver
@@ -73,9 +90,26 @@ public class Articles extends HttpServlet {
 
             // Execute SQL query
             stmt = conn.createStatement();
-            String sql;
-            sql = "SELECT * FROM JArticle WHERE articleID = " + valueID;
+            String sql = null;
+            
+            if (singleArticleID >= 0){
+                sql = "SELECT * FROM JArticle WHERE articleID = " + singleArticleID;
+            }
+            
+            if (category != null) {
+                if (category.equalsIgnoreCase("top")){
+                    sql = "SELECT * FROM JArticle ORDER BY usefulValue DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
+                
+                if (category.equalsIgnoreCase("recent")) {
+                    sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
+            }
+            
             ResultSet rs = stmt.executeQuery(sql);
+            
+            JSONObject articlesObject = new JSONObject();
+            JSONArray articles = new JSONArray();
 
             // Extract data from result set
             while (rs.next()) {
@@ -84,8 +118,9 @@ public class Articles extends HttpServlet {
                 int userID = rs.getInt("userID");
 
                 String title = rs.getString("title");
-                String createdAt = rs.getString("createdAt");
-                String updatedAt = rs.getString("updatedAt");
+                
+                Timestamp createdAt = rs.getTimestamp("createdAt");
+                Timestamp updatedAt = rs.getTimestamp("updatedAt");
                 
                 int usefulValue = rs.getInt("usefulValue");
                 int uselessValue = rs.getInt("uselessValue");
@@ -108,10 +143,26 @@ public class Articles extends HttpServlet {
                 
                 PrintWriter writer = response.getWriter();
                 
-                article.put("author", author);
-                writer.print(article);
+                // single article 
+                if (singleArticleID >= 0){
+                    article.put("author", author);
+                    writer.print(article);
+                    writer.flush();
+                }
+                
+                if (category != null){
+                    article.put("author", author);
+                    articles.put(article);
+                }
             }
 
+            if (category != null){
+                articlesObject.put("articles", articles);
+                PrintWriter writer = response.getWriter();
+                writer.print(articlesObject);
+                writer.flush();  
+            }
+      
             // Clean-up environment
             rs.close();
             stmt.close();
