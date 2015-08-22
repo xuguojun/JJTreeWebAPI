@@ -94,6 +94,13 @@ public class Articles extends HttpServlet {
             pageSize = Integer.parseInt(request.getParameter("pageSize"));
             pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
         }
+        
+        // search articles
+        String query = request.getParameter("q");
+        if (query != null){
+            pageSize = Integer.parseInt(request.getParameter("pageSize"));
+            pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
+        }
 
         try {
             // Register JDBC driver
@@ -118,6 +125,10 @@ public class Articles extends HttpServlet {
                 if (category.equalsIgnoreCase(RECENT)) {
                     sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
+            }
+            
+            if (query != null){
+                sql = "SELECT * FROM JArticle WHERE UPPER(title) LIKE UPPER('%" + query + "%') ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
             }
 
             ResultSet rs = stmt.executeQuery(sql);
@@ -184,22 +195,22 @@ public class Articles extends HttpServlet {
 
                 article.put("paragraphs", paragraphs);
 
+                article.put("author", author);
+                
                 PrintWriter writer = response.getWriter();
-
+                
                 // single article 
                 if (singleArticleID >= 0) {
-                    article.put("author", author);
                     writer.print(article);
                     writer.flush();
                 }
 
-                if (category != null) {
-                    article.put("author", author);
+                if (category != null || query != null) {
                     articles.put(article);
                 }
             }
 
-            if (category != null) {
+            if (category != null || query != null) {
                 articlesObject.put("articles", articles);
                 PrintWriter writer = response.getWriter();
                 writer.print(articlesObject);
