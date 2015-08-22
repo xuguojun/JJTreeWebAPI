@@ -23,7 +23,7 @@ import org.json.JSONObject;
  *
  * @author rose
  */
-public class Accounts extends HttpServlet {
+public class Paragraphs extends HttpServlet {
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -37,11 +37,12 @@ public class Accounts extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("application/json");
+        
     }
 
     private Connection conn;
     private Statement stmt;
-
+    
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Handles the HTTP <code>GET</code> method.
@@ -55,10 +56,10 @@ public class Accounts extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
-
+        
         String pathInfo = request.getPathInfo();
         String[] path = pathInfo.split("/");
-        int userID = Integer.parseInt(path[1]);
+        int singleParagraphID = Integer.parseInt(path[1]);
 
         try {
             // Register JDBC driver
@@ -70,31 +71,30 @@ public class Accounts extends HttpServlet {
             // Execute SQL query
             stmt = conn.createStatement();
             String sql;
-            sql = "SELECT * FROM JUser WHERE userID = " + userID;
+            sql = "SELECT * FROM JParagraph WHERE paragraphID = " + singleParagraphID;
             ResultSet rs = stmt.executeQuery(sql);
 
             // Extract data from result set
             while (rs.next()) {
                 //Retrieve by column name
-                int accountID = rs.getInt("userID");
+                int paragraphID = rs.getInt("paragraphID");
+                int articleID = rs.getInt("articleID");
+                int position = rs.getInt("position");
 
-                String email = rs.getString("email");
-                String mobile = rs.getString("mobile");
-                String password = rs.getString("password");
-                String name = rs.getString("name");
-                String avatarURL = rs.getString("avatarURL");
+                String type = rs.getString("type");
+                String content = rs.getString("content");
+              
+                JSONObject paragraph = new JSONObject();
 
-                JSONObject account = new JSONObject();
-
-                account.put("accountID", accountID);
-                account.put("email", email);
-                account.put("mobile", mobile);
-                account.put("password", password);
-                account.put("name", name);
-                account.put("avatarURL", avatarURL);
+                paragraph.put("paragraphID", paragraphID);
+                paragraph.put("articleID", articleID);
+                paragraph.put("position", position);
+                
+                paragraph.put("type", type);
+                paragraph.put("content", content);
                 
                 PrintWriter writer = response.getWriter();
-                writer.print(account);
+                writer.print(paragraph);
                 writer.flush();
             }
 
