@@ -4,10 +4,21 @@
         <servlet-name>Accounts</servlet-name>
         <servlet-class>com.jjtree.servelet.Accounts</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>Articles</servlet-name>
+        <servlet-class>com.jjtree.servelet.Articles</servlet-class>
+    </servlet>
+    
     <servlet-mapping>
         <servlet-name>Accounts</servlet-name>
         <url-pattern>/accounts/*</url-pattern>
     </servlet-mapping>
+    
+    <servlet-mapping>
+        <servlet-name>Articles</servlet-name>
+        <url-pattern>/articles/*</url-pattern>
+    </servlet-mapping>
+    
     <session-config>
         <session-timeout>
             30
