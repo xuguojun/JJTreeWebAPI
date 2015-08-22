@@ -110,12 +110,14 @@ public class Articles extends HttpServlet {
             
             JSONObject articlesObject = new JSONObject();
             JSONArray articles = new JSONArray();
+            
+            JSONArray paragraphs = new JSONArray();
 
             // Extract data from result set
             while (rs.next()) {
                 //Retrieve by column name
                 int articleID = rs.getInt("articleID");
-                int userID = rs.getInt("userID");
+                int authorID = rs.getInt("userID");
 
                 String title = rs.getString("title");
                 
@@ -126,12 +128,34 @@ public class Articles extends HttpServlet {
                 int uselessValue = rs.getInt("uselessValue");
                 int viewCount = rs.getInt("viewCount");
 
-                String accountUrl = "/accounts/" + userID;
+                String accountUrl = "/accounts/" + authorID;
                 JSONObject author = JServeletManager.fetchFrom(request, accountUrl);
                 JSONObject article = new JSONObject();
+                
+                Statement subStatement = conn.createStatement();
+                String subSql = "SELECT * FROM JParagraph WHERE articleID = " + articleID;
+                ResultSet subRs = subStatement.executeQuery(subSql);
+                
+                while(subRs.next()){
+                    int paragraphID = subRs.getInt("paragraphID");
+                    int position = subRs.getInt("position");
+                    
+                    String type = subRs.getString("type");
+                    String content = subRs.getString("content");
+                    
+                    JSONObject paragraph = new JSONObject();
+                    
+                    paragraph.put("paragraphID", paragraphID);
+                    paragraph.put("position", position);
+                    
+                    paragraph.put("type", type);
+                    paragraph.put("content", content);
+                    
+                    paragraphs.put(paragraph);
+                }
 
                 article.put("articleID", articleID);
-                article.put("userID", userID);
+                article.put("authorID", authorID);
                 
                 article.put("title", title);
                 article.put("createdAt", createdAt);
@@ -140,6 +164,8 @@ public class Articles extends HttpServlet {
                 article.put("usefulValue", usefulValue);
                 article.put("uselessValue", uselessValue);
                 article.put("viewCount", viewCount);
+                
+                article.put("paragraphs", paragraphs);
                 
                 PrintWriter writer = response.getWriter();
                 
