@@ -5,12 +5,19 @@
  */
 package com.jjtree.servelet;
 
+import com.jjtree.utilities.JConstant;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.simple.JSONObject;
 
 /**
  *
@@ -29,20 +36,11 @@ public class Accounts extends HttpServlet {
      */
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet Accounts</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet Accounts at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
+        response.setContentType("application/json");
     }
+
+    private Connection conn;
+    private Statement stmt;
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
@@ -57,6 +55,74 @@ public class Accounts extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
+
+        String pathInfo = request.getPathInfo();
+        String[] path = pathInfo.split("/");
+        int userID = Integer.parseInt(path[1]);
+
+        try {
+            // Register JDBC driver
+            Class.forName(JConstant.JDBC_DRIVER);
+
+            // Open a connection
+            conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+
+            // Execute SQL query
+            stmt = conn.createStatement();
+            String sql;
+            sql = "SELECT * FROM JUser WHERE userID = " + userID;
+            ResultSet rs = stmt.executeQuery(sql);
+
+            // Extract data from result set
+            while (rs.next()) {
+                //Retrieve by column name
+                int accountID = rs.getInt("userID");
+
+                String email = rs.getString("email");
+                String mobile = rs.getString("mobile");
+                String password = rs.getString("password");
+                String name = rs.getString("name");
+                String avatarURL = rs.getString("avatarURL");
+
+                JSONObject account = new JSONObject();
+
+                account.put("accountID", accountID);
+                account.put("email", email);
+                account.put("mobile", mobile);
+                account.put("password", password);
+                account.put("name", name);
+                account.put("avatarURL", avatarURL);
+                
+                PrintWriter writer = response.getWriter();
+                writer.print(account);
+            }
+
+            // Clean-up environment
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException se) {
+            //Handle errors for JDBC
+            se.printStackTrace();
+        } catch (Exception e) {
+            //Handle errors for Class.forName
+            e.printStackTrace();
+        } finally {
+            //finally block used to close resources
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException se2) {
+            }// nothing we can do
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }//end finally try
+        } //end try
     }
 
     /**
