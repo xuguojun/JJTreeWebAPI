@@ -310,7 +310,7 @@ public class Articles extends HttpServlet {
                     stmt.executeUpdate(sql);
                 }
                 
-                JResponse.sendErrorMessage(200, "publish article success!", response);
+                JResponse.sendErrorMessage(0, "publish article success!", response);
 
                 // Clean-up environment
                 rs.close();
