@@ -14,11 +14,13 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -27,6 +29,20 @@ import org.json.JSONObject;
  */
 @WebServlet(name = "Articles", urlPatterns = {"/articles"})
 public class Articles extends HttpServlet {
+
+    private static final String TOP = "top";
+    private static final String RECENT = "recent";
+    private static final String COLLECTION = "collection";
+    private static final String EDIT = "edit";
+    private static final String REWARDED = "rewarded";
+    private static final String REWARD = "reward";
+    private static final String USEFUL = "useful";
+    private static final String USELESS = "useless";
+    private static final String SHARE = "share";
+    private static final String FILTER_READ = "read";
+    private static final String FILTER_UNREAD = "unread";
+    private static final String FILTER_USEFUL = "useful";
+    private static final String FILTER_USELESS = "useless";
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -40,12 +56,12 @@ public class Articles extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("application/json");
-        
+
     }
 
     private Connection conn;
     private Statement stmt;
-    
+
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Handles the HTTP <code>GET</code> method.
@@ -59,10 +75,32 @@ public class Articles extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
-        
+
+        // one single article
         String pathInfo = request.getPathInfo();
-        String[] path = pathInfo.split("/");
-        int valueID = Integer.parseInt(path[1]);
+
+        int singleArticleID = -1;
+        if (pathInfo != null) {
+            String[] path = pathInfo.split("/");
+            singleArticleID = Integer.parseInt(path[1]);
+        }
+
+        // mutiple articles
+        String category = request.getParameter("category");
+        int pageSize = 0;
+        int pageIndex = 0;
+
+        if (category != null) {
+            pageSize = Integer.parseInt(request.getParameter("pageSize"));
+            pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
+        }
+        
+        // search articles
+        String query = request.getParameter("q");
+        if (query != null){
+            pageSize = Integer.parseInt(request.getParameter("pageSize"));
+            pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
+        }
 
         try {
             // Register JDBC driver
@@ -73,43 +111,111 @@ public class Articles extends HttpServlet {
 
             // Execute SQL query
             stmt = conn.createStatement();
-            String sql;
-            sql = "SELECT * FROM JArticle WHERE articleID = " + valueID;
+            String sql = null;
+
+            if (singleArticleID >= 0) {
+                sql = "SELECT * FROM JArticle WHERE articleID = " + singleArticleID;
+            }
+
+            if (category != null) {
+                if (category.equalsIgnoreCase(TOP)) {
+                    sql = "SELECT * FROM JArticle ORDER BY usefulValue DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
+
+                if (category.equalsIgnoreCase(RECENT)) {
+                    sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
+            }
+            
+            if (query != null){
+                sql = "SELECT * FROM JArticle WHERE title IN ( SELECT title FROM JArticle WHERE UPPER(title) LIKE UPPER('%" + query + "%') ORDER BY createdAt DESC ) OFFSET " + (pageIndex * pageSize) + " ROWS FETCH NEXT " + pageSize
+                        + " ROWS ONLY";
+            }
+
             ResultSet rs = stmt.executeQuery(sql);
+
+            JSONObject articlesObject = new JSONObject();
+            JSONArray articles = new JSONArray();
+
+            JSONArray paragraphs = new JSONArray();
 
             // Extract data from result set
             while (rs.next()) {
                 //Retrieve by column name
                 int articleID = rs.getInt("articleID");
-                int userID = rs.getInt("userID");
+                int authorID = rs.getInt("userID");
 
+                boolean isPrivate = rs.getBoolean("isPrivate");
                 String title = rs.getString("title");
-                String createdAt = rs.getString("createdAt");
-                String updatedAt = rs.getString("updatedAt");
-                
+
+                Timestamp createdAt = rs.getTimestamp("createdAt");
+                Timestamp updatedAt = rs.getTimestamp("updatedAt");
+
                 int usefulValue = rs.getInt("usefulValue");
                 int uselessValue = rs.getInt("uselessValue");
                 int viewCount = rs.getInt("viewCount");
 
-                String accountUrl = "/accounts/" + userID;
+                String accountUrl = "/accounts/" + authorID;
                 JSONObject author = JServeletManager.fetchFrom(request, accountUrl);
                 JSONObject article = new JSONObject();
 
+                Statement subStatement = conn.createStatement();
+                String subSql = "SELECT * FROM JParagraph WHERE articleID = " + articleID;
+                ResultSet subRs = subStatement.executeQuery(subSql);
+
+                while (subRs.next()) {
+                    int paragraphID = subRs.getInt("paragraphID");
+                    int position = subRs.getInt("position");
+
+                    String type = subRs.getString("type");
+                    String content = subRs.getString("content");
+
+                    JSONObject paragraph = new JSONObject();
+
+                    paragraph.put("paragraphID", paragraphID);
+                    paragraph.put("position", position);
+
+                    paragraph.put("type", type);
+                    paragraph.put("content", content);
+
+                    paragraphs.put(paragraph);
+                }
+
                 article.put("articleID", articleID);
-                article.put("userID", userID);
-                
+                article.put("authorID", authorID);
+
+                article.put("isPrivate", isPrivate);
                 article.put("title", title);
+
                 article.put("createdAt", createdAt);
                 article.put("updatedAt", updatedAt);
-                
+
                 article.put("usefulValue", usefulValue);
                 article.put("uselessValue", uselessValue);
                 article.put("viewCount", viewCount);
+
+                article.put("paragraphs", paragraphs);
+
+                article.put("author", author);
                 
                 PrintWriter writer = response.getWriter();
                 
-                article.put("author", author);
-                writer.print(article);
+                // single article 
+                if (singleArticleID >= 0) {
+                    writer.print(article);
+                    writer.flush();
+                }
+
+                if (category != null || query != null) {
+                    articles.put(article);
+                }
+            }
+
+            if (category != null || query != null) {
+                articlesObject.put("articles", articles);
+                PrintWriter writer = response.getWriter();
+                writer.print(articlesObject);
+                writer.flush();
             }
 
             // Clean-up environment
