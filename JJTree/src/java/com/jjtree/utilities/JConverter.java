@@ -5,7 +5,6 @@
  */
 package com.jjtree.utilities;
 
-import com.jjtree.servelet.Accounts;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -19,7 +18,8 @@ import org.json.JSONObject;
  * @author rose
  */
 public class JConverter {
-    public static JSONObject convert(HttpServletRequest request) throws IOException{
+
+    public static JSONObject convert(HttpServletRequest request) throws IOException {
         StringBuilder sb = new StringBuilder();
         BufferedReader reader = request.getReader();
         try {
@@ -31,14 +31,14 @@ public class JConverter {
             reader.close();
         }
 
-        JSONObject  jsonObject = null;
+        JSONObject jsonObject = null;
         try {
             jsonObject = new JSONObject(sb.toString());
         } catch (JSONException ex) {
-            Logger.getLogger(Accounts.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(JConverter.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         return jsonObject;
     }
-    
+
 }
