@@ -6,6 +6,8 @@
 package com.jjtree.servelet;
 
 import com.jjtree.utilities.JConstant;
+import com.jjtree.utilities.JConverter;
+import com.jjtree.utilities.JResponse;
 import com.jjtree.utilities.JServeletManager;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -15,12 +17,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -94,10 +99,10 @@ public class Articles extends HttpServlet {
             pageSize = Integer.parseInt(request.getParameter("pageSize"));
             pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
         }
-        
+
         // search articles
         String query = request.getParameter("q");
-        if (query != null){
+        if (query != null) {
             pageSize = Integer.parseInt(request.getParameter("pageSize"));
             pageIndex = Integer.parseInt(request.getParameter("pageIndex"));
         }
@@ -126,8 +131,8 @@ public class Articles extends HttpServlet {
                     sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
             }
-            
-            if (query != null){
+
+            if (query != null) {
                 sql = "SELECT * FROM JArticle WHERE title IN ( SELECT title FROM JArticle WHERE UPPER(title) LIKE UPPER('%" + query + "%') ORDER BY createdAt DESC ) OFFSET " + (pageIndex * pageSize) + " ROWS FETCH NEXT " + pageSize
                         + " ROWS ONLY";
             }
@@ -197,9 +202,9 @@ public class Articles extends HttpServlet {
                 article.put("paragraphs", paragraphs);
 
                 article.put("author", author);
-                
+
                 PrintWriter writer = response.getWriter();
-                
+
                 // single article 
                 if (singleArticleID >= 0) {
                     writer.print(article);
@@ -258,6 +263,214 @@ public class Articles extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
+
+        JSONObject jsonObject = JConverter.convert(request);
+        if (jsonObject == null) {
+            return;
+        }
+
+        try {
+            int accountID = jsonObject.getInt("accountID");
+            boolean isPrivate = jsonObject.getBoolean("isPrivate");
+            String title = jsonObject.getString("title");
+
+            try {
+                Class.forName(JConstant.JDBC_DRIVER);
+                conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+                stmt = conn.createStatement();
+
+                String sql = "SELECT MAX(articleID) FROM JArticle";
+                ResultSet rs = stmt.executeQuery(sql);
+
+                int nextArticleID = 0;
+                while (rs.next()) {
+                    nextArticleID = rs.getInt(1) + 1;
+                }
+
+                sql = "SELECT MAX(paragraphID) FROM JParagraph";
+                rs = stmt.executeQuery(sql);
+
+                int nextParagraphID = 0;
+                while (rs.next()) {
+                    nextParagraphID = rs.getInt(1) + 1;
+                }
+
+                sql = "INSERT INTO JArticle(title, userID, isPrivate, articleID) VALUES ('" + title + "', " + accountID + ", " + isPrivate + ", " + nextArticleID + ")";
+                stmt.executeUpdate(sql);
+
+                JSONArray paragraphs = jsonObject.getJSONArray("paragraphs");
+                for (int i = 0; i < paragraphs.length(); i++) {
+                    JSONObject p = paragraphs.getJSONObject(i);
+
+                    int position = p.getInt("position");
+                    String type = p.getString("type");
+                    String content = p.getString("content");
+
+                    sql = "INSERT INTO JParagraph VALUES ('" + type + "', " + position + ", '" + content + "', " + nextParagraphID + ", " + nextArticleID + ")";
+                    stmt.executeUpdate(sql);
+                }
+
+                JResponse.sendErrorMessage(0, "publish article success!", response);
+
+                // Clean-up environment
+                rs.close();
+                stmt.close();
+                conn.close();
+            } catch (SQLException se) {
+                //Handle errors for JDBC
+                se.printStackTrace();
+            } catch (Exception e) {
+                //Handle errors for Class.forName
+                e.printStackTrace();
+            } finally {
+                //finally block used to close resources
+                try {
+                    if (stmt != null) {
+                        stmt.close();
+                    }
+                } catch (SQLException se2) {
+                }// nothing we can do
+                try {
+                    if (conn != null) {
+                        conn.close();
+                    }
+                } catch (SQLException se) {
+                    se.printStackTrace();
+                }//end finally try
+            } //end try
+
+        } catch (JSONException ex) {
+            Logger.getLogger(Articles.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * Articles - #1 - View Count +1 
+     * Articles - #1 - Mark as Useful 
+     * Articles - #1 - Mark as Useless
+     *
+     * @param req
+     * @param resp
+     * @throws ServletException
+     * @throws IOException
+     */
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+//        super.doPut(req, resp); //To change body of generated methods, choose Tools | Templates.
+
+        processRequest(req, resp);
+
+        // one single article
+        String pathInfo = req.getPathInfo();
+
+        int articleID = -1;
+        if (pathInfo != null) {
+            String[] path = pathInfo.split("/");
+            articleID = Integer.parseInt(path[1]);
+        }
+
+        JSONObject jsonObject = JConverter.convert(req);
+        if (jsonObject == null) {
+            return;
+        }
+
+        // paramaters in json
+        int accountID = -1;
+        int viewCount = 0;
+        int usefulValue = 0;
+        int uselessValue = 0;
+        try {
+
+            if (jsonObject.has("accountID")) {
+                accountID = jsonObject.getInt("accountID");
+            }
+
+            if (jsonObject.has("viewCount")) {
+                viewCount = jsonObject.getInt("viewCount");
+            }
+
+            if (jsonObject.has("usefulValue")) {
+                usefulValue = jsonObject.getInt("usefulValue");
+            }
+
+            if (jsonObject.has("uselessValue")) {
+                uselessValue = jsonObject.getInt("uselessValue");
+            }
+        } catch (JSONException ex) {
+            Logger.getLogger(Articles.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        try {
+            // Register JDBC driver
+            Class.forName(JConstant.JDBC_DRIVER);
+
+            // Open a connection
+            conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+
+            // Execute SQL query
+            stmt = conn.createStatement();
+
+            String sql = null;
+            if (viewCount > 0) {
+                sql = "UPDATE JArticle SET viewCount = viewCount + 1 WHERE articleID = " + articleID;
+            }
+
+            if (usefulValue > 0) {
+                sql = "UPDATE JArticle SET usefulValue = usefulValue + 1 WHERE articleID = " + articleID;
+            }
+
+            if (uselessValue > 0) {
+                sql = "UPDATE JArticle SET uselessValue = uselessValue + 1 WHERE articleID = " + articleID;
+            }
+
+            stmt.executeUpdate(sql);
+
+            sql = "SELECT viewCount, usefulValue, uselessValue FROM JArticle WHERE articleID = " + articleID;
+
+            ResultSet rs = stmt.executeQuery(sql);
+
+            // Extract data from result set
+            while (rs.next()) {
+                int currentViewCount = rs.getInt(1);
+                int currentUsefulValue = rs.getInt(2);
+                int currentUselessValue = rs.getInt(3);
+
+                JSONObject statistObject = new JSONObject();
+                
+//                statistObject.put("articleID", articleID);
+                statistObject.put("viewCount", currentViewCount);
+                statistObject.put("usefulValue", currentUsefulValue);
+                statistObject.put("uselessValue", currentUselessValue);
+
+                JResponse.sendJson(resp, statistObject);
+            }
+
+            // Clean-up environment
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException se) {
+            //Handle errors for JDBC
+            se.printStackTrace();
+        } catch (Exception e) {
+            //Handle errors for Class.forName
+            e.printStackTrace();
+        } finally {
+            //finally block used to close resources
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException se2) {
+            }// nothing we can do
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }//end finally try
+        } //end try
     }
 
     /**
