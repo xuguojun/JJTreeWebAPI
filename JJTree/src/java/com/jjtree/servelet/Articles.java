@@ -286,7 +286,7 @@ public class Articles extends HttpServlet {
                 while (rs.next()) {
                     nextArticleID = rs.getInt(1) + 1;
                 }
-                
+
                 sql = "SELECT MAX(paragraphID) FROM JParagraph";
                 rs = stmt.executeQuery(sql);
 
@@ -309,7 +309,7 @@ public class Articles extends HttpServlet {
                     sql = "INSERT INTO JParagraph VALUES ('" + type + "', " + position + ", '" + content + "', " + nextParagraphID + ", " + nextArticleID + ")";
                     stmt.executeUpdate(sql);
                 }
-                
+
                 JResponse.sendErrorMessage(0, "publish article success!", response);
 
                 // Clean-up environment
@@ -342,6 +342,135 @@ public class Articles extends HttpServlet {
         } catch (JSONException ex) {
             Logger.getLogger(Articles.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    /**
+     * Articles - #1 - View Count +1 
+     * Articles - #1 - Mark as Useful 
+     * Articles - #1 - Mark as Useless
+     *
+     * @param req
+     * @param resp
+     * @throws ServletException
+     * @throws IOException
+     */
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+//        super.doPut(req, resp); //To change body of generated methods, choose Tools | Templates.
+
+        processRequest(req, resp);
+
+        // one single article
+        String pathInfo = req.getPathInfo();
+
+        int articleID = -1;
+        if (pathInfo != null) {
+            String[] path = pathInfo.split("/");
+            articleID = Integer.parseInt(path[1]);
+        }
+
+        JSONObject jsonObject = JConverter.convert(req);
+        if (jsonObject == null) {
+            return;
+        }
+
+        // paramaters in json
+        int accountID = -1;
+        int viewCount = 0;
+        int usefulValue = 0;
+        int uselessValue = 0;
+        try {
+
+            if (jsonObject.has("accountID")) {
+                accountID = jsonObject.getInt("accountID");
+            }
+
+            if (jsonObject.has("viewCount")) {
+                viewCount = jsonObject.getInt("viewCount");
+            }
+
+            if (jsonObject.has("usefulValue")) {
+                usefulValue = jsonObject.getInt("usefulValue");
+            }
+
+            if (jsonObject.has("uselessValue")) {
+                uselessValue = jsonObject.getInt("uselessValue");
+            }
+        } catch (JSONException ex) {
+            Logger.getLogger(Articles.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        try {
+            // Register JDBC driver
+            Class.forName(JConstant.JDBC_DRIVER);
+
+            // Open a connection
+            conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+
+            // Execute SQL query
+            stmt = conn.createStatement();
+
+            String sql = null;
+            if (viewCount > 0) {
+                sql = "UPDATE JArticle SET viewCount = viewCount + 1 WHERE articleID = " + articleID;
+            }
+
+            if (usefulValue > 0) {
+                sql = "UPDATE JArticle SET usefulValue = usefulValue + 1 WHERE articleID = " + articleID;
+            }
+
+            if (uselessValue > 0) {
+                sql = "UPDATE JArticle SET uselessValue = uselessValue + 1 WHERE articleID = " + articleID;
+            }
+
+            stmt.executeUpdate(sql);
+
+            sql = "SELECT viewCount, usefulValue, uselessValue FROM JArticle WHERE articleID = " + articleID;
+
+            ResultSet rs = stmt.executeQuery(sql);
+
+            // Extract data from result set
+            while (rs.next()) {
+                int currentViewCount = rs.getInt(1);
+                int currentUsefulValue = rs.getInt(2);
+                int currentUselessValue = rs.getInt(3);
+
+                JSONObject statistObject = new JSONObject();
+                
+//                statistObject.put("articleID", articleID);
+                statistObject.put("viewCount", currentViewCount);
+                statistObject.put("usefulValue", currentUsefulValue);
+                statistObject.put("uselessValue", currentUselessValue);
+
+                JResponse.sendJson(resp, statistObject);
+            }
+
+            // Clean-up environment
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException se) {
+            //Handle errors for JDBC
+            se.printStackTrace();
+        } catch (Exception e) {
+            //Handle errors for Class.forName
+            e.printStackTrace();
+        } finally {
+            //finally block used to close resources
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException se2) {
+            }// nothing we can do
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }//end finally try
+        } //end try
     }
 
     /**

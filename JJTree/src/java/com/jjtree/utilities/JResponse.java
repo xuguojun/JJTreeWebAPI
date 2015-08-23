@@ -19,12 +19,18 @@ public class JResponse {
 
     public static void sendErrorMessage(int errorCode, String errorMessage, HttpServletResponse response) throws JSONException, IOException {
         JSONObject resultObject = new JSONObject();
-        
+
         resultObject.put("errorCode", errorCode);
         resultObject.put("errorMessage", errorMessage);
 
         PrintWriter writer = response.getWriter();
         writer.print(resultObject);
+        writer.flush();
+    }
+
+    public static void sendJson(HttpServletResponse response, JSONObject json) throws IOException {
+        PrintWriter writer = response.getWriter();
+        writer.print(json);
         writer.flush();
     }
 }
