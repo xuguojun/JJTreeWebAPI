@@ -7,6 +7,7 @@ package com.jjtree.servelet;
 
 import com.jjtree.utilities.JConstant;
 import com.jjtree.utilities.JConverter;
+import com.jjtree.utilities.JResponse;
 import com.jjtree.utilities.JServeletManager;
 import com.jjtree.utilities.JString;
 import java.io.IOException;
@@ -136,15 +137,28 @@ public class Login extends HttpServlet {
                     }
                 }
             }
+            
+             
 
             // Clean-up environment
             rs.close();
             stmt.close();
             conn.close();
         } catch (SQLException se) {
-            //Handle errors for JDBC
+            try {
+                //Handle errors for JDBC
+                JResponse.sendErrorMessage(1, "login failed!", response);
+            } catch (JSONException ex) {
+                Logger.getLogger(Login.class.getName()).log(Level.SEVERE, null, ex);
+            }
             se.printStackTrace();
         } catch (Exception e) {
+            try {
+                //Handle errors for JDBC
+                JResponse.sendErrorMessage(1, "login failed!", response);
+            } catch (JSONException ex) {
+                Logger.getLogger(Login.class.getName()).log(Level.SEVERE, null, ex);
+            }
             //Handle errors for Class.forName
             e.printStackTrace();
         } finally {
