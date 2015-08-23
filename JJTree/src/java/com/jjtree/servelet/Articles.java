@@ -7,6 +7,7 @@ package com.jjtree.servelet;
 
 import com.jjtree.utilities.JConstant;
 import com.jjtree.utilities.JConverter;
+import com.jjtree.utilities.JResponse;
 import com.jjtree.utilities.JServeletManager;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -309,13 +310,7 @@ public class Articles extends HttpServlet {
                     stmt.executeUpdate(sql);
                 }
                 
-                JSONObject resultObject = new JSONObject();
-                resultObject.put("errorCode", 200);
-                resultObject.put("errorMessage", "publish article success!");
-                
-                PrintWriter writer = response.getWriter();
-                writer.print(resultObject);
-                writer.flush();
+                JResponse.sendErrorMessage(200, "publish article success!", response);
 
                 // Clean-up environment
                 rs.close();
