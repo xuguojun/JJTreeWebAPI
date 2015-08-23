@@ -6,6 +6,9 @@
 package com.jjtree.servelet;
 
 import com.jjtree.utilities.JConstant;
+import com.jjtree.utilities.JConverter;
+import com.jjtree.utilities.JServeletManager;
+import com.jjtree.utilities.JString;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -13,10 +16,13 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -24,6 +30,9 @@ import org.json.JSONObject;
  * @author rose
  */
 public class Accounts extends HttpServlet {
+
+    private Connection conn;
+    private Statement stmt;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -38,9 +47,6 @@ public class Accounts extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("application/json");
     }
-
-    private Connection conn;
-    private Statement stmt;
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
@@ -92,7 +98,7 @@ public class Accounts extends HttpServlet {
                 account.put("password", password);
                 account.put("name", name);
                 account.put("avatarURL", avatarURL);
-                
+
                 PrintWriter writer = response.getWriter();
                 writer.print(account);
                 writer.flush();
@@ -138,6 +144,93 @@ public class Accounts extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
+
+        JSONObject jsonObject = JConverter.convert(request);
+        if (jsonObject == null) {
+            return;
+        }
+
+        String account = null;
+        String password = null;
+        String name = null;
+        try {
+            account = jsonObject.getString("account");
+            name = jsonObject.getString("name");
+            password = jsonObject.getString("password");
+
+            if (account == null || password == null || name == null) {
+                return;
+            }
+        } catch (JSONException ex) {
+            Logger.getLogger(Accounts.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        try {
+
+            // Register JDBC driver
+            Class.forName(JConstant.JDBC_DRIVER);
+
+            // Open a connection
+            conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+
+            // Execute SQL query
+            stmt = conn.createStatement();
+
+            String sql = "SELECT MAX(userID) FROM JUser";
+            ResultSet rs = stmt.executeQuery(sql);
+
+            int nextUserID = 0;
+            // Extract data from result set
+            while (rs.next()) {
+                nextUserID = rs.getInt(1) + 1;
+            }
+
+            String insertSql = null;
+            if (JString.isEmail(account)) {
+                insertSql = "INSERT INTO JUser(email, password, name, userID) VALUES ('" + account + "', '" + password + "', '" + name + "', " + nextUserID + ")";
+            }
+
+            if (JString.isPhoneNumber(account)) {
+                insertSql = "INSERT INTO JUser(mobile, password, name, userID) VALUES ('" + account + "', '" + password + "', '" + name + "', " + nextUserID + ")";
+            }
+
+            Statement stmt2 = conn.createStatement();
+            stmt2.executeUpdate(insertSql);
+
+            String accountUrl = "/accounts/" + nextUserID;
+
+            JSONObject accountObject = JServeletManager.fetchFrom(request, accountUrl);
+
+            PrintWriter writer = response.getWriter();
+            writer.print(accountObject);
+            writer.flush();
+
+            // Clean-up environment
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException se) {
+            //Handle errors for JDBC
+            se.printStackTrace();
+        } catch (Exception e) {
+            //Handle errors for Class.forName
+            e.printStackTrace();
+        } finally {
+            //finally block used to close resources
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+            } catch (SQLException se2) {
+            }// nothing we can do
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }//end finally try
+        } //end try
     }
 
     /**
