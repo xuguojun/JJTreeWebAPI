@@ -5,12 +5,26 @@
  */
 package com.jjtree.servelet;
 
+import com.jjtree.utilities.JConstant;
+import com.jjtree.utilities.JConverter;
+import com.jjtree.utilities.JResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  *
@@ -18,17 +32,22 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class UserBehaviors extends HttpServlet {
     
-    static final String BEHAVIRO_WATCH = "watch";
-    static final String BEHAVIRO_REWARD_USER = "reward_author";
-    static final String BEHAVIRO_REWARD_ARTICLE = "reward_article";
-    static final String BEHAVIRO_COLLECT = "collect";
-    static final String BEHAVIRO_COMMENT = "comment";
-    static final String BEHAVIRO_SHARE = "share";
-    static final String BEHAVIRO_CREATE_ARTICLE = "create_article";
-    static final String BEHAVIRO_MARK_AS_USEFUL = "mark_as_useful";
-    static final String BEHAVIRO_MARK_AS_USELESS = "mark_as_useless";
-    static final String BEHAVIRO_READ = "read";
-    static final String BEHAVIRO_EDIT = "edit";
+    static final String BEHAVIOR_WATCH = "watch";
+    static final String BEHAVIOR_REWARD_USER = "reward_author";
+    static final String BEHAVIOR_REWARD_ARTICLE = "reward_article";
+    static final String BEHAVIOR_COLLECT = "collect";
+    static final String BEHAVIOR_COMMENT = "comment";
+    static final String BEHAVIOR_SHARE = "share";
+    static final String BEHAVIOR_CREATE_ARTICLE = "create_article";
+    static final String BEHAVIOR_MARK_AS_USEFUL = "mark_as_useful";
+    static final String BEHAVIOR_MARK_AS_USELESS = "mark_as_useless";
+    static final String BEHAVIOR_READ = "read";
+    static final String BEHAVIOR_EDIT = "edit";
+    
+    static final String[] BEHAVIORS = {BEHAVIOR_WATCH, BEHAVIOR_REWARD_USER, BEHAVIOR_REWARD_ARTICLE, BEHAVIOR_COLLECT, BEHAVIOR_COMMENT, BEHAVIOR_SHARE, BEHAVIOR_CREATE_ARTICLE, BEHAVIOR_MARK_AS_USEFUL, BEHAVIOR_MARK_AS_USELESS, BEHAVIOR_READ, BEHAVIOR_EDIT};
+    
+    private Connection conn;
+    private Statement stmt;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -41,19 +60,8 @@ public class UserBehaviors extends HttpServlet {
      */
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet UserBehaviors</title>");            
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet UserBehaviors at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
+        response.setContentType("application/json");
+        
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
@@ -84,7 +92,61 @@ public class UserBehaviors extends HttpServlet {
             throws ServletException, IOException {
         processRequest(request, response);
         
-        
+        JSONObject jsonObject = JConverter.convert(request);
+        if (jsonObject == null) {
+            return;
+        }
+
+        try {
+            int subjectID = jsonObject.getInt("subjectID");
+            String predicate = jsonObject.getString("predicate");
+            int objectID = jsonObject.getInt("objectID");
+            String note = jsonObject.getString("note");// 
+            
+            if (!Arrays.asList(BEHAVIORS).contains(predicate)){
+                JResponse.sendErrorMessage(1, "invalid predicate!", response);
+                return;
+            }
+
+            try {
+                Class.forName(JConstant.JDBC_DRIVER);
+                conn = DriverManager.getConnection(JConstant.DB_URL, JConstant.USER, JConstant.PASSWORD);
+                stmt = conn.createStatement();
+
+                String sql = "INSERT INTO JUserBehaviors(subjectID, predicate, objectID, note) VALUES (" + subjectID + ", '" + predicate + "', " + objectID + ", '" + note + "')";
+                stmt.executeUpdate(sql);
+
+                JResponse.sendErrorMessage(0, "excute command success!", response);
+
+                // Clean-up environment
+                stmt.close();
+                conn.close();
+            } catch (SQLException se) {
+                //Handle errors for JDBC
+                se.printStackTrace();
+            } catch (Exception e) {
+                //Handle errors for Class.forName
+                e.printStackTrace();
+            } finally {
+                //finally block used to close resources
+                try {
+                    if (stmt != null) {
+                        stmt.close();
+                    }
+                } catch (SQLException se2) {
+                }// nothing we can do
+                try {
+                    if (conn != null) {
+                        conn.close();
+                    }
+                } catch (SQLException se) {
+                    se.printStackTrace();
+                }//end finally try
+            } //end try
+
+        } catch (JSONException ex) {
+            Logger.getLogger(Articles.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     /**
