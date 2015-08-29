@@ -20,6 +20,10 @@
         <servlet-name>Passwords</servlet-name>
         <servlet-class>com.jjtree.servelet.Passwords</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>UserBehaviors</servlet-name>
+        <servlet-class>com.jjtree.servelet.UserBehaviors</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>Accounts</servlet-name>
         <url-pattern>/accounts/*</url-pattern>
@@ -39,6 +43,10 @@
     <servlet-mapping>
         <servlet-name>Passwords</servlet-name>
         <url-pattern>/passwords</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>UserBehaviors</servlet-name>
+        <url-pattern>/userBehaviors</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>
