@@ -115,10 +115,37 @@ public class UserBehaviors extends HttpServlet {
 
                 String sql = "INSERT INTO JUserBehaviors(subjectID, predicate, objectID, note) VALUES (" + subjectID + ", '" + predicate + "', " + objectID + ", '" + note + "')";
                 stmt.executeUpdate(sql);
+                
+                int rowID = -1;
+                sql = "SELECT IDENTITY_VAL_LOCAL() AS RowID FROM JUserBehaviors";
+                ResultSet rs = stmt.executeQuery(sql);
+                while(rs.next()){
+                    rowID = rs.getInt("RowID");
+                }
 
-                JResponse.sendErrorMessage(0, "excute command success!", response);
+                sql = "SELECT * FROM JUserBehaviors WHERE behaviorId = " + rowID;
+                rs = stmt.executeQuery(sql);
+                while(rs.next()){
+                    int _behaviorId = rs.getInt("behaviorId");
+                    int _subjectID = rs.getInt("subjectID");
+                    String _predicate = rs.getString("predicate");
+                    int _objectID = rs.getInt("objectID");
+                    String _note = rs.getString("note");
+                    String _behaviorDate = rs.getString("behaviorDate");
+                    
+                    JSONObject object = new JSONObject();
+                    object.put("behaviorID", _behaviorId);
+                    object.put("subjectID", _subjectID);
+                    object.put("predicate", _predicate);
+                    object.put("objectID", _objectID);
+                    object.put("note", _note);
+                    object.put("behaviorDate", _behaviorDate);
+                    
+                    JResponse.sendJson(response, object);
+                }
 
                 // Clean-up environment
+                rs.close();;
                 stmt.close();
                 conn.close();
             } catch (SQLException se) {
