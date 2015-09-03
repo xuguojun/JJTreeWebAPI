@@ -130,6 +130,25 @@ public class Articles extends HttpServlet {
                 if (category.equalsIgnoreCase(RECENT)) {
                     sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
+                
+                if (category.equalsIgnoreCase(COLLECTION)) {
+                    int accountID = Integer.parseInt(request.getParameter("accountID"));
+                    sql = "SELECT objectID FROM JUserBehaviors WHERE predicate = 'collect' and subjectID = " + accountID;
+                    ResultSet artilesResultSet = stmt.executeQuery(sql);
+                    
+                    String conditions = null;
+                    while (artilesResultSet.next()){
+                        int articleID = artilesResultSet.getInt("objectID");
+                        
+                        if (conditions == null) {
+                            conditions = "articleID = " + articleID;
+                        } else {
+                            conditions += (" OR articleID =" + articleID);
+                        }
+                    }
+                    
+                    sql = "SELECT * FROM JArticle WHERE "+ conditions +" ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
             }
 
             if (query != null) {
