@@ -101,6 +101,50 @@ public class UserBehaviors extends HttpServlet {
             int objectID = jsonObject.getInt("objectID");
             String note = jsonObject.getString("note");// 
             
+            if (predicate.equals(BEHAVIOR_WATCH)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_REWARD_USER)){
+//                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_REWARD_ARTICLE)){
+//                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_COLLECT)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_COMMENT)){
+//                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_SHARE)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_CREATE_ARTICLE)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_MARK_AS_USEFUL)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_MARK_AS_USELESS)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_EDIT)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_READ)){
+                note = null;
+            }
+            
             if (!Arrays.asList(BEHAVIORS).contains(predicate)){
                 JResponse.sendErrorMessage(1, "invalid predicate!", response);
                 return;
