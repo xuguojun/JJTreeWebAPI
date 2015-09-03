@@ -130,6 +130,17 @@ public class Articles extends HttpServlet {
                 if (category.equalsIgnoreCase(RECENT)) {
                     sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
+
+                // collection
+                if (category.equalsIgnoreCase(COLLECTION)
+                        || category.equalsIgnoreCase(EDIT)
+                        || category.equalsIgnoreCase(REWARD)
+                        || category.equalsIgnoreCase(USEFUL)
+                        || category.equalsIgnoreCase(USELESS)
+                        || category.equalsIgnoreCase(SHARE)) {
+                    sql = getSqlQuery(category, request, pageSize, pageIndex);
+                }
+
             }
 
             if (query != null) {
@@ -345,9 +356,8 @@ public class Articles extends HttpServlet {
     }
 
     /**
-     * Articles - #1 - View Count +1 
-     * Articles - #1 - Mark as Useful 
-     * Articles - #1 - Mark as Useless
+     * Articles - #1 - View Count +1 Articles - #1 - Mark as Useful Articles -
+     * #1 - Mark as Useless
      *
      * @param req
      * @param resp
@@ -436,7 +446,7 @@ public class Articles extends HttpServlet {
                 int currentUselessValue = rs.getInt(3);
 
                 JSONObject statistObject = new JSONObject();
-                
+
 //                statistObject.put("articleID", articleID);
                 statistObject.put("viewCount", currentViewCount);
                 statistObject.put("usefulValue", currentUsefulValue);
@@ -483,4 +493,53 @@ public class Articles extends HttpServlet {
         return "Short description";
     }// </editor-fold>
 
+    private String getSqlQuery(String category, HttpServletRequest request, int pageSize, int pageIndex) throws SQLException {
+
+        String sql = null;
+        String predicate = null;
+
+        if (category.equalsIgnoreCase(COLLECTION)) {
+            predicate = UserBehaviors.BEHAVIOR_COLLECT;
+        }
+
+        if (category.equalsIgnoreCase(EDIT)) {
+            predicate = UserBehaviors.BEHAVIOR_EDIT;
+        }
+        
+        if (category.equalsIgnoreCase(REWARD)) {
+//            predicate = UserBehaviors.BEHAVIOR_REWARD_USER + "' OR predicate = '" + UserBehaviors.BEHAVIOR_REWARD_ARTICLE;
+            predicate = UserBehaviors.BEHAVIOR_REWARD_ARTICLE;            
+        }
+        
+        if (category.equalsIgnoreCase(USEFUL)) {
+            predicate = UserBehaviors.BEHAVIOR_MARK_AS_USEFUL;
+        }
+        
+        if (category.equalsIgnoreCase(USELESS)) {
+            predicate = UserBehaviors.BEHAVIOR_MARK_AS_USELESS;
+        }
+
+        if (category.equalsIgnoreCase(SHARE)) {
+            predicate = UserBehaviors.BEHAVIOR_SHARE;
+        }
+        
+        int accountID = Integer.parseInt(request.getParameter("accountID"));
+        sql = "SELECT objectID FROM JUserBehaviors WHERE predicate = '" + predicate + "' and subjectID = " + accountID;
+        ResultSet artilesResultSet = stmt.executeQuery(sql);
+
+        String conditions = null;
+        while (artilesResultSet.next()) {
+            int articleID = artilesResultSet.getInt("objectID");
+
+            if (conditions == null) {
+                conditions = "articleID = " + articleID;
+            } else {
+                conditions += (" OR articleID =" + articleID);
+            }
+        }
+
+        sql = "SELECT * FROM JArticle WHERE " + conditions + " ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+
+        return sql;
+    }
 }
