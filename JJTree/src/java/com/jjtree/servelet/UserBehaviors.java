@@ -31,6 +31,7 @@ import org.json.JSONObject;
 public class UserBehaviors extends HttpServlet {
     
     static final String BEHAVIOR_WATCH = "watch";
+    static final String BEHAVIOR_UNWATCH = "unwatch";
     static final String BEHAVIOR_REWARD_USER = "reward_author";
     static final String BEHAVIOR_REWARD_ARTICLE = "reward_article";
     static final String BEHAVIOR_COLLECT = "collect";
@@ -42,7 +43,7 @@ public class UserBehaviors extends HttpServlet {
     static final String BEHAVIOR_READ = "read";
     static final String BEHAVIOR_EDIT = "edit";
     
-    static final String[] BEHAVIORS = {BEHAVIOR_WATCH, BEHAVIOR_REWARD_USER, BEHAVIOR_REWARD_ARTICLE, BEHAVIOR_COLLECT, BEHAVIOR_COMMENT, BEHAVIOR_SHARE, BEHAVIOR_CREATE_ARTICLE, BEHAVIOR_MARK_AS_USEFUL, BEHAVIOR_MARK_AS_USELESS, BEHAVIOR_READ, BEHAVIOR_EDIT};
+    static final String[] BEHAVIORS = {BEHAVIOR_WATCH, BEHAVIOR_UNWATCH, BEHAVIOR_REWARD_USER, BEHAVIOR_REWARD_ARTICLE, BEHAVIOR_COLLECT, BEHAVIOR_COMMENT, BEHAVIOR_SHARE, BEHAVIOR_CREATE_ARTICLE, BEHAVIOR_MARK_AS_USEFUL, BEHAVIOR_MARK_AS_USELESS, BEHAVIOR_READ, BEHAVIOR_EDIT};
     
     private Connection conn;
     private Statement stmt;
@@ -102,6 +103,10 @@ public class UserBehaviors extends HttpServlet {
             String note = jsonObject.getString("note");// 
             
             if (predicate.equals(BEHAVIOR_WATCH)){
+                note = null;
+            }
+            
+            if (predicate.equals(BEHAVIOR_UNWATCH)){
                 note = null;
             }
             
