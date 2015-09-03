@@ -130,24 +130,45 @@ public class Articles extends HttpServlet {
                 if (category.equalsIgnoreCase(RECENT)) {
                     sql = "SELECT * FROM JArticle ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
-                
+
+                // collection
                 if (category.equalsIgnoreCase(COLLECTION)) {
                     int accountID = Integer.parseInt(request.getParameter("accountID"));
                     sql = "SELECT objectID FROM JUserBehaviors WHERE predicate = 'collect' and subjectID = " + accountID;
                     ResultSet artilesResultSet = stmt.executeQuery(sql);
-                    
+
                     String conditions = null;
-                    while (artilesResultSet.next()){
+                    while (artilesResultSet.next()) {
                         int articleID = artilesResultSet.getInt("objectID");
-                        
+
                         if (conditions == null) {
                             conditions = "articleID = " + articleID;
                         } else {
                             conditions += (" OR articleID =" + articleID);
                         }
                     }
-                    
-                    sql = "SELECT * FROM JArticle WHERE "+ conditions +" ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+
+                    sql = "SELECT * FROM JArticle WHERE " + conditions + " ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
+                }
+
+                // edit
+                if (category.equalsIgnoreCase(EDIT)) {
+                    int accountID = Integer.parseInt(request.getParameter("accountID"));
+                    sql = "SELECT objectID FROM JUserBehaviors WHERE predicate = 'edit' and subjectID = " + accountID;
+                    ResultSet artilesResultSet = stmt.executeQuery(sql);
+
+                    String conditions = null;
+                    while (artilesResultSet.next()) {
+                        int articleID = artilesResultSet.getInt("objectID");
+
+                        if (conditions == null) {
+                            conditions = "articleID = " + articleID;
+                        } else {
+                            conditions += (" OR articleID =" + articleID);
+                        }
+                    }
+
+                    sql = "SELECT * FROM JArticle WHERE " + conditions + " ORDER BY createdAt DESC OFFSET " + pageSize * pageIndex + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
                 }
             }
 
@@ -364,9 +385,8 @@ public class Articles extends HttpServlet {
     }
 
     /**
-     * Articles - #1 - View Count +1 
-     * Articles - #1 - Mark as Useful 
-     * Articles - #1 - Mark as Useless
+     * Articles - #1 - View Count +1 Articles - #1 - Mark as Useful Articles -
+     * #1 - Mark as Useless
      *
      * @param req
      * @param resp
@@ -455,7 +475,7 @@ public class Articles extends HttpServlet {
                 int currentUselessValue = rs.getInt(3);
 
                 JSONObject statistObject = new JSONObject();
-                
+
 //                statistObject.put("articleID", articleID);
                 statistObject.put("viewCount", currentViewCount);
                 statistObject.put("usefulValue", currentUsefulValue);
